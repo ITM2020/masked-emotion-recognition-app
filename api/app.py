@@ -37,4 +37,11 @@ ds_factor = 0.6
 
 print("Models have been loaded.")
 
-webrtc_streamer(key="example")
+st.title("Facial Emotion Recognition of (Un)Masked Faces")
+st.write("To begin detecting the whether a person is wearing a mask or not and their facial expression, click the START button below.")
+
+def callback(frame):
+    img = frame.to_ndarray(format="bgr24")
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+webrtc_streamer(key="example", video_frame_callback=callback)
