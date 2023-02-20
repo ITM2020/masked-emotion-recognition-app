@@ -1,21 +1,31 @@
+from pathlib import Path
+
+import av
 import cv2
 import numpy as np
 from keras.models import model_from_json
-
 import streamlit as st
 from streamlit_webrtc import webrtc_streamer
 
-import av
+from utils.download import download_file
+
+HERE = Path(__file__).parent
+ROOT = HERE.parent
+
 
 mask_dict = {0: "Masked", 1: "Unmasked"}
 emotion_dict = {0: "Angry", 1: "Happy", 2: "Neutral", 3: "Surprised"}
 
+@st.cache(allow_output_mutation=True)
+def load_models():
+    maskJSON = open()
+
 # Load masked/unmasked model
-json_file = open('api/models/MaskModel.json', 'r')
+json_file = open('../models/MaskModel.json', 'r')
 loaded_model_json = json_file.read()
 json_file.close()
 maskModel = model_from_json(loaded_model_json)
-maskModel.load_weights('api/models/MaskModel.h5')
+maskModel.load_weights('../models/MaskModel.h5')
 
 # Load unmasked emotion recognition model
 json_file = open('api/models/EmotionUnmaskedModel.json', 'r')
