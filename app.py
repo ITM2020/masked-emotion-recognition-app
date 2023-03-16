@@ -37,7 +37,8 @@ def load_maskedEmotionModel():
 
 @st.cache_resource
 def load_faceDetectionModel():
-    return cv2.CascadeClassifier('models/HaarCascadeFiles/haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier('models/HaarCascadeFiles/haarcascade_frontalface_default.xml')
+    return face_cascade
 
 maskModel = load_maskDetectionModel()
 unmaskedEmotion = load_unmaskedEmotionModel()
