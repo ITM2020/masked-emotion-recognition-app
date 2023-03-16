@@ -8,42 +8,58 @@ from streamlit_webrtc import webrtc_streamer
 mask_dict = {0: "Masked", 1: "Unmasked"}
 emotion_dict = {0: "Angry", 1: "Happy", 2: "Neutral", 3: "Surprised"}
 
-# Load masked/unmasked model
-json_file = open('models/MaskModel.json', 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-maskModel = model_from_json(loaded_model_json)
-maskModel.load_weights('models/MaskModel.h5')
+@st.cache_resource
+def load_maskDetectionModel():
+    json = open('models/MaskModel.json', 'r')
+    model = json.read()
+    json.close()
+    loadedModel = model_from_json(model)
+    loadedModel.load_weights('models/MaskModel.h5')
+    return loadedModel
 
-# Load unmasked emotion recognition model
-json_file = open('models/EmotionUnmaskedModel.json', 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-UnmaskedEmotion = model_from_json(loaded_model_json)
-UnmaskedEmotion.load_weights('models/EmotionUnmaskedModel.h5')
+@st.cache_resource
+def load_unmaskedEmotionModel():
+    json = open('models/EmotionUnmaskedModel.json', 'r')
+    model = json.read()
+    json.close()
+    loadedModel = model_from_json(model)
+    loadedModel.load_weights('models/EmotionUnmaskedModel.h5')
+    return loadedModel
 
-# Load masked emotion recognition model
-json_file = open('models/EmotionMaskedModel.json', 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-MaskedEmotion = model_from_json(loaded_model_json)
-MaskedEmotion.load_weights('models/EmotionMaskedModel.h5')
+@st.cache_resource
+def load_maskedEmotionModel():
+    json = open('models/EmotionMaskedModel.json', 'r')
+    model = json.read()
+    json.close()
+    loadedModel = model_from_json(model)
+    loadedModel.load_weights('models/EmotionMaskedModel.h5')
+    return loadedModel
 
-# Load HaarCascade face classifier
-face_cascade = cv2.CascadeClassifier('models/HaarCascadeFiles/haarcascade_frontalface_default.xml')
+@st.cache_resource
+def load_faceDetectionModel():
+    return cv2.CascadeClassifier('models/HaarCascadeFiles/haarcascade_frontalface_default.xml')
+
+maskModel = load_maskDetectionModel()
+unmaskedEmotion = load_unmaskedEmotionModel()
+maskedEmotion = load_maskedEmotionModel()
+faceCascade = load_faceDetectionModel()
+
 ds_factor = 0.6
+icon_size = 20
 
 print("Models have been loaded.")
 
-st.title("Facial Emotion Recognition of (Un)Masked Faces")
-st.write("To begin detecting the whether a person is wearing a mask or not and their facial expression, click the START button below.")
+st.title("Facial Emotion Recognition App")
+st.write("This web app is a demonstration of an ML model trained to detect emotions of masked/unmasked faces.")
+st.write("It can tell between two face states: masked/unmasked, and four emotions: neutral/happy/angry/surprised.")
+st.write("To begin, click START below. (It may take up to 1-2 minutes to start the stream depending on your location).")
 
 def callback(frame):
     img = frame.to_ndarray(format="bgr24")
 
-    img = cv2.resize(img, (1280, 720))
+    img = cv2.resize(img, (720, 405))
     gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    num_faces = face_cascade.detectMultiScale(gray_frame, 1.3, 5)
+    num_faces = faceCascade.detectMultiScale(gray_frame, 1.3, 5)
 
     for (x, y, w, h) in num_faces:
         roi_frame = img[y:y + h, x:x + w]
@@ -58,7 +74,7 @@ def callback(frame):
         # use mask or unmasked set to recognize emotion depending on masked/unmasked
         if mask_dict[maxindex]=='Unmasked':
             cv2.rectangle(img, (x, y - 50), (x + w, y + h + 10), (0, 0, 255), 4)
-            UnmaskedEmotionPredict = UnmaskedEmotion.predict(cropped_img_gray)
+            UnmaskedEmotionPredict = unmaskedEmotion.predict(cropped_img_gray)
             maxindex2 = int(np.argmax(UnmaskedEmotionPredict))
             cv2.putText(img, emotion_dict[maxindex2], (x + 200, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
             cv2.putText(img, mask_dict[maxindex], (x + 5, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
@@ -66,7 +82,7 @@ def callback(frame):
 
         elif mask_dict[maxindex]=='Masked':
             cv2.rectangle(img, (x, y - 50), (x + w, y + h + 10), (0, 255, 0), 4)
-            MaskedEmotionPredict = MaskedEmotion.predict(cropped_img_gray)
+            MaskedEmotionPredict = maskedEmotion.predict(cropped_img_gray)
             maxindex3 = int(np.argmax(MaskedEmotionPredict))
             cv2.putText(img, emotion_dict[maxindex3], (x + 200, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
             cv2.putText(img, mask_dict[maxindex], (x + 5, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
@@ -75,8 +91,10 @@ def callback(frame):
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 webrtc_streamer(
-    key="example",
-    rtc_configuration={  # Add this config
-        "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
-    },
-    video_frame_callback=callback)
+    key="face-emotion-recognition",
+    rtc_configuration={ "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+    video_frame_callback=callback,
+    media_stream_constraints={"video": True, "audio": False},
+    )
+
+st.write("Github: https://github.com/ITM2020/masked-emotion-recognition-app")
